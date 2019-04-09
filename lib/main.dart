@@ -1,43 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'dart:ui' as ui show Codec, FrameInfo, Image, ColorFilter;
+import 'package:animated_floatactionbuttons/animated_floatactionbuttons.dart';
+import 'package:flutter_colorpicker/block_picker.dart';
+import 'package:flutter_picker/flutter_picker.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Imaginate',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Imaginate'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -47,75 +33,195 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   File _image;
+  bool _cancelActionVisible = false;
+  var _persistentButtons;
+  var _colorFilter;
 
-  Future getImage() async {
-    var imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
+  Color _currentColor = Colors.transparent;
+  BlendMode _blendMode = BlendMode.color;
+
+  Future getImage(ImageSource imageSource) async {
+    var imageFile = await ImagePicker.pickImage(source: imageSource);
     setState(() {
       _image = imageFile;
+      _cancelActionVisible = true;
+      _persistentButtons = <Widget>[
+        ButtonTheme(
+          height: 50.0,
+          child: RaisedButton(
+            onPressed: () {
+              setState(() => {
+                    _colorFilter = null,
+                    _blendMode = BlendMode.color,
+                    _currentColor = Colors.transparent
+                  });
+            },
+            child: Icon(
+              Icons.format_clear,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        ButtonTheme(
+          height: 50.0,
+          child: RaisedButton(
+            onPressed: () {
+              colorDialog();
+            },
+            child: Icon(
+              Icons.color_lens,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        ButtonTheme(
+          height: 50.0,
+          child: RaisedButton(
+            onPressed: () {
+              showPicker(context);
+            },
+            child: Icon(
+              Icons.style,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ];
     });
+  }
+
+  colorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Pick a color!'),
+          content: SingleChildScrollView(
+            child: BlockPicker(
+              pickerColor: _currentColor,
+              onColorChanged: (color) => {
+                    setState(() => {
+                          _currentColor = color,
+                          _colorFilter = ui.ColorFilter.mode(color, _blendMode)
+                        }),
+                    Navigator.of(context).pop()
+                  },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  showPicker(BuildContext context) {
+    String PickerData;
+    PickerData = '[';
+    for (var i = 0; i < BlendMode.values.length; i++) {
+      PickerData += '"' + BlendMode.values[i].toString().split('.')[1] + '"';
+      if (BlendMode.values.length - 1 > i) PickerData += ',';
+    }
+    PickerData += ']';
+//    PickerData = '["Test", "Test2"]';
+    new Picker(
+        adapter: PickerDataAdapter<String>(
+            pickerdata: new JsonDecoder().convert(PickerData)),
+        changeToFirst: true,
+        hideHeader: false,
+        onConfirm: (Picker picker, List value) {
+          var blendMode;
+          if (value[0] == 0)
+            blendMode = BlendMode.color;
+          else
+            blendMode = BlendMode.values[value[0]];
+          setState(() => {
+                _blendMode = blendMode,
+                _colorFilter = ui.ColorFilter.mode(_currentColor, blendMode)
+              });
+        }).showModal(this.context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    var screenSize = MediaQuery.of(context).size;
     var renderImage;
     if (_image == null) {
       renderImage = Text(
         'Select an image',
       );
     } else {
-      renderImage =
-        DecoratedBox(
-          decoration: new BoxDecoration(
-            image: new DecorationImage(
-              image: FileImage(_image),
-              fit: BoxFit.cover,
-              // ...
-            ),
-            // ...
+      renderImage = Container(
+        height: screenSize.height - 150,
+        width: screenSize.width - 50,
+        decoration: new BoxDecoration(
+          image: new DecorationImage(
+            colorFilter: _colorFilter,
+            image: FileImage(_image),
+            fit: BoxFit.contain,
           ),
-        );
+        ),
+      );
     }
+
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: <Widget>[
+          AnimatedOpacity(
+            opacity: _cancelActionVisible ? 1.0 : 0.0,
+            duration: Duration(milliseconds: 200),
+            // The green box needs to be the child of the AnimatedOpacity
+            child: IconButton(
+              icon: Icon(Icons.cancel),
+              onPressed: () => setState(() {
+                    _image = null;
+                    _cancelActionVisible = false;
+                    _persistentButtons = null;
+                    _colorFilter = null;
+                    _blendMode = BlendMode.color;
+                    _currentColor = Colors.transparent;
+                  }),
+            ),
+          ),
+        ],
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            renderImage
-          ],
+          children: <Widget>[renderImage],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: getImage,
-        tooltip: 'Pick an Image',
+      persistentFooterButtons: _persistentButtons,
+      floatingActionButton: AnimatedOpacity(
+        opacity: _cancelActionVisible ? 0.0 : 1.0,
+        duration: Duration(milliseconds: 200),
+        // The green box needs to be the child of the AnimatedOpacity
+        child: AnimatedFloatingActionButton(
+          fabButtons: <Widget>[takePhotoFloat(), pickPhotoFloat()],
+          colorStartAnimation: Colors.blue,
+          colorEndAnimation: Colors.red,
+          animatedIconData: AnimatedIcons.menu_close,
+        ),
+      ),
+    );
+  }
+
+  Widget takePhotoFloat() {
+    return Container(
+      child: FloatingActionButton(
+        onPressed: () => getImage(ImageSource.camera),
+        tooltip: 'Take a photo',
         child: Icon(Icons.add_a_photo),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
+    );
+  }
+
+  Widget pickPhotoFloat() {
+    return Container(
+      child: FloatingActionButton(
+        onPressed: () => getImage(ImageSource.gallery),
+        tooltip: 'Pick an image',
+        child: Icon(Icons.image),
+      ),
     );
   }
 }
