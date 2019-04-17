@@ -3,6 +3,7 @@
 //
 
 #import "GeneratedPluginRegistrant.h"
+#import <esys_flutter_share/EsysFlutterSharePlugin.h>
 #import <flutter_picker/FlutterPickerPlugin.h>
 #import <fluttertoast/FluttertoastPlugin.h>
 #import <image_picker/ImagePickerPlugin.h>
@@ -12,6 +13,7 @@
 @implementation GeneratedPluginRegistrant
 
 + (void)registerWithRegistry:(NSObject<FlutterPluginRegistry>*)registry {
+  [EsysFlutterSharePlugin registerWithRegistrar:[registry registrarForPlugin:@"EsysFlutterSharePlugin"]];
   [FlutterPickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterPickerPlugin"]];
   [FluttertoastPlugin registerWithRegistrar:[registry registrarForPlugin:@"FluttertoastPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];

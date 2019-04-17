@@ -10,6 +10,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'images.dart';
 
 void main() => runApp(MyApp());
 
@@ -46,6 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future getImage(ImageSource imageSource) async {
     var imageFile = await ImagePicker.pickImage(source: imageSource);
+    if (imageFile == null) return;
     setState(() {
       _image = imageFile;
       _cancelActionVisible = true;
@@ -217,6 +219,13 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
+    imageNavigate() async {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ImageListing()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -246,6 +255,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   }),
             ),
           ),
+          IconButton(
+            icon: Icon(Icons.photo_album),
+            onPressed: imageNavigate,
+          ),
         ],
       ),
       body: Center(
@@ -272,6 +285,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget takePhotoFloat() {
     return Container(
       child: FloatingActionButton(
+        heroTag: 'photoTaker',
         onPressed: () => getImage(ImageSource.camera),
         tooltip: 'Take a photo',
         child: Icon(Icons.add_a_photo),
@@ -282,6 +296,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget pickPhotoFloat() {
     return Container(
       child: FloatingActionButton(
+        heroTag: 'photoPicker',
         onPressed: () => getImage(ImageSource.gallery),
         tooltip: 'Pick an image',
         child: Icon(Icons.image),
