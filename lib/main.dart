@@ -6,6 +6,10 @@ import 'dart:ui' as ui show Codec, FrameInfo, Image, ColorFilter;
 import 'package:animated_floatactionbuttons/animated_floatactionbuttons.dart';
 import 'package:flutter_colorpicker/block_picker.dart';
 import 'package:flutter_picker/flutter_picker.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 void main() => runApp(MyApp());
 
@@ -142,6 +146,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    ScreenshotController screenshotController = ScreenshotController();
     var screenSize = MediaQuery.of(context).size;
     var renderImage;
     if (_image == null) {
@@ -149,23 +154,82 @@ class _MyHomePageState extends State<MyHomePage> {
         'Select an image',
       );
     } else {
-      renderImage = Container(
-        height: screenSize.height - 150,
-        width: screenSize.width - 50,
-        decoration: new BoxDecoration(
-          image: new DecorationImage(
-            colorFilter: _colorFilter,
-            image: FileImage(_image),
-            fit: BoxFit.contain,
+      renderImage = Screenshot(
+        controller: screenshotController,
+        child: Container(
+          height: screenSize.height - 150,
+          width: screenSize.width - 50,
+          decoration: new BoxDecoration(
+            image: new DecorationImage(
+              colorFilter: _colorFilter,
+              image: FileImage(_image),
+              fit: BoxFit.contain,
+            ),
           ),
         ),
       );
+    }
+
+    captureImage() async {
+      Map<PermissionGroup, PermissionStatus> permissions =
+          await PermissionHandler()
+              .requestPermissions([PermissionGroup.storage]);
+      if (permissions.containsKey(PermissionGroup.storage) &&
+          permissions[PermissionGroup.storage] == PermissionStatus.granted) {
+        String directoryMain =
+            (await getExternalStorageDirectory()).path + '/Imaginate';
+
+        new Directory(directoryMain)
+            .create(recursive: true)
+            .then((Directory directory) {
+          String fileName = DateTime.now().toIso8601String();
+          String path = directoryMain + '/' + fileName + '.png';
+
+          screenshotController.capture(path: path).then((File image) {
+            setState(() {
+              _image = null;
+              _cancelActionVisible = false;
+              _persistentButtons = null;
+              _colorFilter = null;
+              _blendMode = BlendMode.color;
+              _currentColor = Colors.transparent;
+            });
+            Fluttertoast.showToast(
+                msg: "Image saved to your phone",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.CENTER,
+                timeInSecForIos: 1,
+                backgroundColor: Colors.blue,
+                textColor: Colors.white,
+                fontSize: 16.0);
+          }).catchError((onError) {
+            print(onError);
+            Fluttertoast.showToast(
+                msg: "An error has occurred",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.CENTER,
+                timeInSecForIos: 1,
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                fontSize: 16.0);
+          });
+        });
+      }
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         actions: <Widget>[
+          AnimatedOpacity(
+            opacity: _cancelActionVisible ? 1.0 : 0.0,
+            duration: Duration(milliseconds: 200),
+            // The green box needs to be the child of the AnimatedOpacity
+            child: IconButton(
+              icon: Icon(Icons.save),
+              onPressed: captureImage,
+            ),
+          ),
           AnimatedOpacity(
             opacity: _cancelActionVisible ? 1.0 : 0.0,
             duration: Duration(milliseconds: 200),
