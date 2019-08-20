@@ -24,9 +24,7 @@ dependencies:
   animated_floatactionbuttons: ^0.1.0
   flutter_colorpicker: any
   flutter_picker: ^1.0.10
-  screenshot:
-    git:
-      url: https://github.com/iatsu/screenshot
+  screenshot: ^0.1.1
   path_provider: ^0.5.0+1
   permission_handler: ^3.0.0
   fluttertoast: ^3.0.3
